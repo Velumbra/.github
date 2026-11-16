@@ -3,6 +3,8 @@
 # no workflow of its own).
 #
 # - No version tag yet: releases `first-version`, whatever the commits say.
+# - A commit since the last tag with a `Release-As: 1.0.0` footer: releases that version, whatever
+#   the other commits say (the newest such footer wins). That is how a repo leaves 0.x.
 # - After that, semantic-release reads the Conventional Commits since the last tag (`fix:` patch,
 #   `feat:` minor, `feat!:` or a `BREAKING CHANGE:` footer major) and makes a GitHub release with
 #   the changelog. Below 1.0.0 a breaking change is a minor, so 1.0.0 is a deliberate step.
@@ -62,6 +64,12 @@ jobs:
         run: |
           tag=$(git tag --list "${PREFIX}[0-9]*" --sort=-v:refname | head -1)
           echo "version=${tag#"$PREFIX"}" >> "$GITHUB_OUTPUT"
+          # A version asked for in a commit footer since that tag; the newest commit's wins.
+          as=''
+          if [ -n "$tag" ]; then
+            as=$(git log "$tag..HEAD" --format=%B | sed -nE 's/^Release-As: *v?([0-9]+\.[0-9]+\.[0-9]+[0-9A-Za-z.+-]*) *$/\1/p' | head -1)
+          fi
+          echo "as=$as" >> "$GITHUB_OUTPUT"
         env:
           PREFIX: ${{ inputs.tag-prefix }}
       - name: Build
@@ -78,9 +86,9 @@ jobs:
         env:
           OWNER: ${{ github.repository_owner }}
           READ_TOKEN: ${{ secrets.PACKAGES_TOKEN || github.token }}
-      - name: First release
+      - name: Fixed release
         id: first
-        if: steps.latest.outputs.version == ''
+        if: steps.latest.outputs.version == '' || steps.latest.outputs.as != ''
         run: |
           if [ "$NPM_PUBLISH" = true ]; then
             npm version "$VERSION" --no-git-tag-version --allow-same-version > /dev/null
@@ -88,16 +96,18 @@ jobs:
           fi
           git tag "$PREFIX$VERSION"
           git push origin "$PREFIX$VERSION"
-          gh release create "$PREFIX$VERSION" --title "$PREFIX$VERSION" --notes "First release."
+          if [ -n "$AS" ]; then notes=(--generate-notes); else notes=(--notes "First release."); fi
+          gh release create "$PREFIX$VERSION" --title "$PREFIX$VERSION" "${notes[@]}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         env:
           NPM_PUBLISH: ${{ inputs.npm-publish }}
-          VERSION: ${{ inputs.first-version }}
+          AS: ${{ steps.latest.outputs.as }}
+          VERSION: ${{ steps.latest.outputs.as || inputs.first-version }}
           PREFIX: ${{ inputs.tag-prefix }}
           NPM_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
       - name: Config
-        if: steps.latest.outputs.version != ''
+        if: steps.latest.outputs.version != '' && steps.latest.outputs.as == ''
         run: |
           if [ "$NPM_PUBLISH" = true ]; then npm='"@semantic-release/npm",'; else npm=''; fi
           # Below 1.0.0 a breaking change is a minor.
@@ -114,7 +124,7 @@ jobs:
           BRANCH: ${{ github.event.repository.default_branch }}
           PREFIX: ${{ inputs.tag-prefix }}
       - name: semantic-release
-        if: steps.latest.outputs.version != ''
+        if: steps.latest.outputs.version != '' && steps.latest.outputs.as == ''
         run: npx --yes --package=semantic-release@24.2.9 --package=conventional-changelog-conventionalcommits@8.0.0 semantic-release
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -122,7 +132,7 @@ jobs:
           npm_config_ignore_scripts: 'true'
       - id: released
         name: Version
-        if: steps.latest.outputs.version != ''
+        if: steps.latest.outputs.version != '' && steps.latest.outputs.as == ''
         run: |
           tag=$(git tag --points-at HEAD --list "${PREFIX}[0-9]*" | head -1)
           echo "version=${tag#"$PREFIX"}" >> "$GITHUB_OUTPUT"

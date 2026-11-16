@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Node repos on pnpm: deduped lockfiles, and the rule for majors of the group's own packages",
+  "description": "Node repos on pnpm: deduped lockfiles, and the rules for breaking updates of the group's own packages",
   "extends": ["github>velumbra/.github//renovate/default"],
   "postUpdateOptions": ["pnpmDedupe"],
   "packageRules": [
@@ -9,6 +9,15 @@
       "matchPackageNames": ["@velumbra/**"],
       "matchDepTypes": ["peerDependencies"],
       "matchUpdateTypes": ["major"],
+      "rangeStrategy": "replace",
+      "commitMessagePrefix": "feat(deps)!:"
+    },
+    {
+      "description": "Below 1.0 a minor is breaking (semver: ^0.3 takes no 0.4), so a new minor of a module this one needs is breaking for it too, released below 1.0 as its own minor.",
+      "matchPackageNames": ["@velumbra/**"],
+      "matchDepTypes": ["peerDependencies"],
+      "matchCurrentVersion": "<1.0.0",
+      "matchUpdateTypes": ["minor"],
       "rangeStrategy": "replace",
       "commitMessagePrefix": "feat(deps)!:"
     }
