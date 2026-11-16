@@ -5,6 +5,17 @@
   "postUpdateOptions": ["pnpmDedupe"],
   "packageRules": [
     {
+      "description": "Merged on their own once the checks are green: dev dependencies (minor and patch) and patches of anything but the organization's own packages. Majors and @velumbra/* stay for review.",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true
+    },
+    {
+      "matchUpdateTypes": ["patch"],
+      "matchPackageNames": ["*", "!@velumbra/**"],
+      "automerge": true
+    },
+    {
       "description": "A new major of a module this one needs: its range moves to the new major only, which drops the old one for the app, so it is this module's major too (feat!). Keeping both instead (^1 || ^2) is a minor: edit the range and drop the `!`.",
       "matchPackageNames": ["@velumbra/**"],
       "matchDepTypes": ["peerDependencies"],
@@ -29,5 +40,9 @@
       "hostType": "npm",
       "token": "{{ secrets.PACKAGES_TOKEN }}"
     }
-  ]
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true
+  }
 }

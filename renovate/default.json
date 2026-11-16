@@ -20,6 +20,12 @@
       "description": "The shared workflows (velumbra/.github), pinned to a release in every repo.",
       "matchPackageNames": ["velumbra/.github"],
       "semanticCommitType": "ci"
+    },
+    {
+      "description": "GitHub Actions pinned to digests: refreshed on their own once the checks are green.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["digest", "pin", "pinDigest"],
+      "automerge": true
     }
   ]
 }
