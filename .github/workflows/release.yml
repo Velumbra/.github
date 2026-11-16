@@ -50,6 +50,10 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # One release at a time per repo: a second merge waits instead of racing for the same tag.
+    concurrency:
+      group: release-${{ github.repository }}
+      cancel-in-progress: false
     outputs:
       version: ${{ steps.first.outputs.version || steps.released.outputs.version }}
     steps:
