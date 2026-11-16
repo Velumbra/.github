@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [$default-branch]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  check:
+    uses: velumbra/.github/.github/workflows/node.yml@v0.4.1
+    secrets: inherit
+
+  release:
+    needs: check
+    if: github.event_name == 'push'
+    uses: velumbra/.github/.github/workflows/release.yml@v0.4.1
+    secrets: inherit
+    permissions:
+      contents: write
+
+  image:
+    needs: release
+    if: github.event_name == 'push'
+    uses: velumbra/.github/.github/workflows/docker-image.yml@v0.4.1
+    with:
+      version: ${{ needs.release.outputs.version }}
+      target: runtime
+      npm-registry-secret: true
+    secrets: inherit
+    permissions:
+      packages: write

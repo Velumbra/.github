@@ -1,0 +1,6 @@
+{
+  "name": "Velumbra module",
+  "description": "Checks, then a release to GitHub Packages.",
+  "iconName": "octicon package",
+  "categories": ["JavaScript", "TypeScript"]
+}

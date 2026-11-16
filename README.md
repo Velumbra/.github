@@ -8,7 +8,7 @@ Velumbra's defaults for every repo (profile, `CONTRIBUTING.md`, `SECURITY.md`, i
 | `release.yml`      | semantic-release: tag, GitHub release, optionally publish to GitHub Packages |
 | `docker-image.yml` | Image to `ghcr.io`, tagged with the release                                  |
 
-A repo calls them from its `.github/workflows/ci.yml`, pinned to a release:
+A repo calls them from its `.github/workflows/ci.yml`, pinned to a release; Actions → New workflow offers it ready-made (`workflow-templates/`, module or app):
 
 ```yaml
 jobs:

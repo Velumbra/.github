@@ -1,0 +1,6 @@
+{
+  "name": "Velumbra app",
+  "description": "Checks, a release, then the image to ghcr.io.",
+  "iconName": "octicon rocket",
+  "categories": ["JavaScript", "TypeScript"]
+}
