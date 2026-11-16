@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Every repo in the organization: Conventional Commits that semantic-release reads, the guidelines submodule and the pinned shared workflows kept current",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "git-submodules": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "The guidelines (.claude/rules/velumbra), a submodule kept at velumbra/guidelines' latest commit.",
+      "matchManagers": ["git-submodules"],
+      "semanticCommitType": "chore",
+      "automerge": true
+    },
+    {
+      "description": "The shared workflows (velumbra/.github), pinned to a release in every repo.",
+      "matchPackageNames": ["velumbra/.github"],
+      "semanticCommitType": "ci"
+    }
+  ]
+}

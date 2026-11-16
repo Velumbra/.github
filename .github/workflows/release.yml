@@ -1,0 +1,130 @@
+# A release from the default branch, for any repo. Its `version` output is the version released,
+# empty without one, so a job after it can ship it (a tag pushed with the workflow's token starts
+# no workflow of its own).
+#
+# - No version tag yet: releases `first-version`, whatever the commits say.
+# - After that, semantic-release reads the Conventional Commits since the last tag (`fix:` patch,
+#   `feat:` minor, `feat!:` or a `BREAKING CHANGE:` footer major) and makes a GitHub release with
+#   the changelog. Below 1.0.0 a breaking change is a minor, so 1.0.0 is a deliberate step.
+#
+# With `npm-publish`, the package is built by its own `prepack` script and published to GitHub
+# Packages, without lifecycle scripts (a `prepare` may undo the build, as a dev stub does).
+# package.json keeps its version in the repo; the published one is the tag's.
+#
+# The caller grants `contents: write` (the tag and release) and, to publish, `packages: write`.
+name: release
+
+on:
+  workflow_call:
+    inputs:
+      npm-publish:
+        description: Build with the `prepack` script and publish to GitHub Packages.
+        type: boolean
+        default: false
+      first-version:
+        description: The version of a repo's first release.
+        type: string
+        default: 0.1.0
+      tag-prefix:
+        description: What comes before the version in a release tag.
+        type: string
+        default: v
+      node-version:
+        description: Node.js major version.
+        type: string
+        default: '26'
+      pnpm-version:
+        description: pnpm version.
+        type: string
+        default: '12.15.0'
+    secrets:
+      PACKAGES_TOKEN:
+        required: false
+    outputs:
+      version:
+        description: The version released, empty if none.
+        value: ${{ jobs.release.outputs.version }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.first.outputs.version || steps.released.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: Latest version
+        id: latest
+        run: |
+          tag=$(git tag --list "${PREFIX}[0-9]*" --sort=-v:refname | head -1)
+          echo "version=${tag#"$PREFIX"}" >> "$GITHUB_OUTPUT"
+        env:
+          PREFIX: ${{ inputs.tag-prefix }}
+      - name: Build
+        if: inputs.npm-publish
+        run: |
+          npm install -g pnpm@${{ inputs.pnpm-version }}
+          echo "@${OWNER,,}:registry=https://npm.pkg.github.com" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${READ_TOKEN}" >> .npmrc
+          if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
+          pnpm run --if-present prepack
+          # Published with the workflow's token, which may write this repo's packages.
+          echo "@${OWNER,,}:registry=https://npm.pkg.github.com" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=\${NPM_TOKEN}" >> .npmrc
+        env:
+          OWNER: ${{ github.repository_owner }}
+          READ_TOKEN: ${{ secrets.PACKAGES_TOKEN || github.token }}
+      - name: First release
+        id: first
+        if: steps.latest.outputs.version == ''
+        run: |
+          if [ "$NPM_PUBLISH" = true ]; then
+            npm version "$VERSION" --no-git-tag-version --allow-same-version > /dev/null
+            npm publish --ignore-scripts
+          fi
+          git tag "$PREFIX$VERSION"
+          git push origin "$PREFIX$VERSION"
+          gh release create "$PREFIX$VERSION" --title "$PREFIX$VERSION" --notes "First release."
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          NPM_PUBLISH: ${{ inputs.npm-publish }}
+          VERSION: ${{ inputs.first-version }}
+          PREFIX: ${{ inputs.tag-prefix }}
+          NPM_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+      - name: Config
+        if: steps.latest.outputs.version != ''
+        run: |
+          if [ "$NPM_PUBLISH" = true ]; then npm='"@semantic-release/npm",'; else npm=''; fi
+          # Below 1.0.0 a breaking change is a minor.
+          case "$LATEST" in 0.*) rules='"releaseRules":[{"breaking":true,"release":"minor"}],' ;; *) rules='' ;; esac
+          cat > .releaserc.json <<JSON
+          {"branches":["$BRANCH"],"tagFormat":"$PREFIX\${version}","plugins":[
+            ["@semantic-release/commit-analyzer",{$rules"preset":"conventionalcommits"}],
+            ["@semantic-release/release-notes-generator",{"preset":"conventionalcommits"}],
+            $npm ["@semantic-release/github",{"successComment":false,"failComment":false,"releasedLabels":false}]]}
+          JSON
+        env:
+          NPM_PUBLISH: ${{ inputs.npm-publish }}
+          LATEST: ${{ steps.latest.outputs.version }}
+          BRANCH: ${{ github.event.repository.default_branch }}
+          PREFIX: ${{ inputs.tag-prefix }}
+      - name: semantic-release
+        if: steps.latest.outputs.version != ''
+        run: npx --yes --package=semantic-release@24.2.9 --package=conventional-changelog-conventionalcommits@8.0.0 semantic-release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NPM_TOKEN: ${{ github.token }}
+          npm_config_ignore_scripts: 'true'
+      - id: released
+        name: Version
+        if: steps.latest.outputs.version != ''
+        run: |
+          tag=$(git tag --points-at HEAD --list "${PREFIX}[0-9]*" | head -1)
+          echo "version=${tag#"$PREFIX"}" >> "$GITHUB_OUTPUT"
+        env:
+          PREFIX: ${{ inputs.tag-prefix }}

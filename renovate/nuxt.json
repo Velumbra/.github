@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Nuxt repos: Nuxt's packages in one merge request",
+  "extends": ["github>velumbra/.github//renovate/node"],
+  "packageRules": [
+    {
+      "groupName": "nuxt",
+      "matchPackageNames": ["nuxt", "@nuxt/**", "@nuxtjs/**"]
+    }
+  ]
+}

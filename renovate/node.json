@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Node repos on pnpm: deduped lockfiles, and the rule for majors of the group's own packages",
+  "extends": ["github>velumbra/.github//renovate/default"],
+  "postUpdateOptions": ["pnpmDedupe"],
+  "packageRules": [
+    {
+      "description": "A new major of a module this one needs: its range moves to the new major only, which drops the old one for the app, so it is this module's major too (feat!). Keeping both instead (^1 || ^2) is a minor: edit the range and drop the `!`.",
+      "matchPackageNames": ["@velumbra/**"],
+      "matchDepTypes": ["peerDependencies"],
+      "matchUpdateTypes": ["major"],
+      "rangeStrategy": "replace",
+      "commitMessagePrefix": "feat(deps)!:"
+    }
+  ],
+  "npmrc": "@velumbra:registry=https://npm.pkg.github.com",
+  "hostRules": [
+    {
+      "matchHost": "npm.pkg.github.com",
+      "hostType": "npm",
+      "token": "{{ secrets.PACKAGES_TOKEN }}"
+    }
+  ]
+}

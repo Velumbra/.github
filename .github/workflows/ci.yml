@@ -1,0 +1,12 @@
+# This repo's own release: the workflows above, tagged `v1.2.3` from Conventional Commits.
+name: ci
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    uses: ./.github/workflows/release.yml
+    permissions:
+      contents: write
