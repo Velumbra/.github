@@ -5,7 +5,8 @@
 # - No version tag yet: releases `first-version`, whatever the commits say.
 # - After that, semantic-release reads the Conventional Commits since the last tag (`fix:` patch,
 #   `feat:` minor, `feat!:` or a `BREAKING CHANGE:` footer major) and makes a GitHub release with
-#   the changelog. Below 1.0.0 a breaking change is a minor, so 1.0.0 is a deliberate step.
+#   the changelog, with semantic-release's default rules: from 0.x, the first breaking change
+#   releases 1.0.0, so a repo stays below 1.0 until a commit says it breaks.
 #
 # With `npm-publish`, the package is built by its own `prepack` script and published to GitHub
 # Packages, without lifecycle scripts (a `prepare` may undo the build, as a dev stub does).
@@ -100,17 +101,14 @@ jobs:
         if: steps.latest.outputs.version != ''
         run: |
           if [ "$NPM_PUBLISH" = true ]; then npm='"@semantic-release/npm",'; else npm=''; fi
-          # Below 1.0.0 a breaking change is a minor.
-          case "$LATEST" in 0.*) rules='"releaseRules":[{"breaking":true,"release":"minor"}],' ;; *) rules='' ;; esac
           cat > .releaserc.json <<JSON
           {"branches":["$BRANCH"],"tagFormat":"$PREFIX\${version}","plugins":[
-            ["@semantic-release/commit-analyzer",{$rules"preset":"conventionalcommits"}],
+            ["@semantic-release/commit-analyzer",{"preset":"conventionalcommits"}],
             ["@semantic-release/release-notes-generator",{"preset":"conventionalcommits"}],
             $npm ["@semantic-release/github",{"successComment":false,"failComment":false,"releasedLabels":false}]]}
           JSON
         env:
           NPM_PUBLISH: ${{ inputs.npm-publish }}
-          LATEST: ${{ steps.latest.outputs.version }}
           BRANCH: ${{ github.event.repository.default_branch }}
           PREFIX: ${{ inputs.tag-prefix }}
       - name: semantic-release
