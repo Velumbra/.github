@@ -1,9 +1,10 @@
-# This repo's own release: the workflows above, tagged `v1.2.3` from Conventional Commits.
+# This repo's own release: the workflows above, tagged `v1.2.3` from Conventional Commits or a pushed tag.
 name: ci
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
 
 jobs:
   release:
